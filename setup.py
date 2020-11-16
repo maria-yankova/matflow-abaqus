@@ -66,7 +66,7 @@ setup(
     name='matflow-abaqus',
     packages=find_packages(),
     project_urls={
-        'GitHub': 'https://github.com//matflow-abaqus'
+        'GitHub': 'https://github.com/maria-yankova/matflow-abaqus'
     },
     version=get_version(),
 )
