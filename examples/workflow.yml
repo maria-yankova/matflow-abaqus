@@ -1,0 +1,52 @@
+tasks:
+
+  - name: generate_material_models
+    method: default
+    base:
+      materials_list:
+        - name: rigid
+          elastic:
+            youngs_modulus: 2000000
+            poisson_ratio: 0.3
+        - name: euromat_A
+          func_name: euromat_A
+          temp: -91
+
+  - name: generate_specimen_parts
+    method: compact_tension_fracture
+    software: Abaqus
+    base:
+      dimension: 2
+      mesh_definition:
+        mesh_type: finite_radius_uniform     # finite_radius_fan | finite_radius_uniform
+        crack_tip_radius_microns: 10
+        fine_mesh_length: 0.2
+        fine_mesh_element_length: 0.02
+        fan_box_width: 8  # aproximate width of fan mesh in multiples of crack_tip_radius
+        fan_box_num_side_elements: 3
+      elem_type: CPE4  # C3D8R
+      size_type: 1T
+      fraction: half   # full | half | quarter
+      specimen_material: euro-a-91
+
+  - name: generate_assembly
+    method: compact_tension_assembly
+    software: Abaqus
+    base:
+      specimen_parts: specimen_parts
+
+  - name: generate_steps
+    method: compact_tension_steps
+    software: Abaqus
+    base:
+      fraction: half
+      time_increments:
+        initial: 0.02
+        step: 1e-8
+        max: 1
+      displacement: 0.1 # in mm    
+
+  - name: simulate_deformation
+    method: FE
+    software: Abaqus
+    base: {}
