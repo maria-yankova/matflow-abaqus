@@ -4,7 +4,7 @@ stats: false
 tasks:
   - name: generate_material_models
     method: default
-    software: abaqus
+    software: abaqus[2017]
     base:
       materials_list:
         - name: rigid
@@ -17,7 +17,7 @@ tasks:
 
   - name: generate_specimen_parts
     method: compact_tension_fracture
-    software: Abaqus
+    software: abaqus[2017]
     base:
       dimension: 2
       mesh_definition:
@@ -30,20 +30,23 @@ tasks:
       elem_type: CPE4  # C3D8R
       size_type: ct-1t
       fraction: half   # full | half | quarter
-      specimen_material: euro-a-91
+      specimen_material: euromat_A
 
   - name: generate_steps
     method: compact_tension_steps
-    software: Abaqus
+    software: abaqus[2017]
     base:
-      # time_increments: (TODO)
+      # time_increments: #TODO
       #   initial: 0.02
       #   step: 1e-8
       #   max: 1
-      applied_displacement: 0.1 # in mm    
+      applied_displacement: 0.001 # in mm    
 
   - name: simulate_deformation
     method: FE
-    software: Abaqus
+    software: abaqus[2017]
     run_options:
-      num_cores: 2
+      num_cores: 8
+    base:
+      memory: 20 GB
+      # do_datacheck: true

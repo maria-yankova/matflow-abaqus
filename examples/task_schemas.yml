@@ -62,11 +62,36 @@
             - material_models
             - specimen_parts
             - steps
+            - memory
+            - name: do_datacheck
+              default: null
           input_map:
             - inputs:
                 - material_models
                 - specimen_parts
                 - steps
               file: inputs.inp
+          command_pathways:
+            - commands_idx: [0]
+            - commands_idx: [1]
+              condition: [do_datacheck]
           commands:
             - command: . $ABAQUS_HOME/liccheck.sh; <<executable>>
+              options: 
+                - [job=myjob]
+                - [input=inputs.inp]
+                - [cpus=$NSLOTS]
+                - [scratch=$HOME/scratch]
+                - [memory]
+                - [interactive]            
+            - command: . $ABAQUS_HOME/liccheck.sh; <<executable>>
+              options: 
+                - [datacheck]
+                - [job=myjob]
+                - [input=inputs.inp]
+                - [cpus=$NSLOTS]
+                - [scratch=$HOME/scratch]
+                - [memory]
+                - [interactive]
+          
+
