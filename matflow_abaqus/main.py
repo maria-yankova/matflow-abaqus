@@ -34,8 +34,8 @@ def generate_parts(dimension, mesh_definition,
     return out
 
 @func_mapper(task='generate_steps', method='compact_tension_steps')
-def generate_steps(applied_displacement, number_contours):
-    compact_tension_steps = generate_compact_tension_specimen_steps(applied_displacement, number_contours)
+def generate_steps(applied_displacement, number_contours, time_increment_definition):
+    compact_tension_steps = generate_compact_tension_specimen_steps(applied_displacement, number_contours, time_increment_definition)
     out = {
         'steps': compact_tension_steps
     }
