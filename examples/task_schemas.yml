@@ -39,6 +39,8 @@
         - name: abaqus          
 
 - name: generate_steps
+  inputs:
+    - time_increment_definition
   outputs:
     - steps
   methods:

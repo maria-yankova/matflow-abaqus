@@ -36,10 +36,11 @@ tasks:
     method: compact_tension_steps
     software: abaqus[2017]
     base:
-      # time_increments: #TODO
-      #   initial: 0.02
-      #   step: 1e-8
-      #   max: 1
+      time_increment_definition:
+        initial_time_increment: 0.02
+        total_step_time: 1.0
+        min_time_increment_allowed: 1e-08
+        max_time_increment_allowed: 0.02
       applied_displacement: 0.001 # in mm    
 
   - name: simulate_deformation
