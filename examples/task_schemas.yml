@@ -6,7 +6,7 @@
   methods:
     - name: default
       implementations:
-       - abaqus
+       - name: abaqus
   
 
 - name: generate_specimen_parts
@@ -21,11 +21,15 @@
       inputs:
         - fraction           # "full" | "half" | "quarter"
         - specimen_material
+      implementations:
+        - name: abaqus   
     - name: compact_tension_fracture
       inputs:
         - size_type          # "0.5T" | "1T" | "2T"
         - fraction           # "full" | "half" | "quarter"    
         - specimen_material
+      implementations:
+        - name: abaqus   
     - name: senb_fracture
       inputs:
         - a_w_ratio          # "0.5" | "0.1" | "0.2"
@@ -34,35 +38,39 @@
       implementations:
         - name: abaqus          
 
-- name: generate_assembly
-  inputs:
-    - specimen_parts
-  outputs:
-    - assembly
-  methods:
-    - name: compact_tension_assembly
-
-
 - name: generate_steps
-  inputs:
-    - specimen_parts
   outputs:
-    - assembly
+    - steps
   methods:
     - name: compact_tension_steps
+      inputs:
+        - name: number_contours
+          default: 40
+        - applied_displacement
+      implementations:
+        - name: abaqus
+      
 
-  - name: simulate_deformation
-    methods: 
-      - name: FE
-        outputs:
-          - model_response
-        implementations:
-          - name: Abaqus
-            inputs:
-              material_models: material_models
-              specimen_parts: specimen_parts
-              assembly: assembly
-              steps: steps
+- name: simulate_deformation
+  methods: 
+    - name: FE
+      outputs:
+        - model_response
+      implementations:
+        - name: Abaqus
+          inputs:
+            - material_models
+            - specimen_parts
+            - steps
+          input_map:
+            - inputs:
+                - material_models
+                - specimen_parts
+                - steps
+              file: inputs.inp
+          commands:
+            - command: . $ABAQUS_HOME/liccheck.sh; <<executable>>
+          
 
 
 
