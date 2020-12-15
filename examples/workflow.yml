@@ -36,8 +36,7 @@ tasks:
     method: compact_tension_steps
     software: Abaqus
     base:
-      # fraction: half
-      # time_increments:
+      # time_increments: (TODO)
       #   initial: 0.02
       #   step: 1e-8
       #   max: 1

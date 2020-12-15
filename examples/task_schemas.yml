@@ -25,7 +25,7 @@
         - name: abaqus   
     - name: compact_tension_fracture
       inputs:
-        - size_type          # "0.5T" | "1T" | "2T"
+        - size_type          # "ct-0.5t" | "ct-1t" | "ct-2t"
         - fraction           # "full" | "half" | "quarter"    
         - specimen_material
       implementations:
@@ -70,41 +70,3 @@
               file: inputs.inp
           commands:
             - command: . $ABAQUS_HOME/liccheck.sh; <<executable>>
-          
-
-
-
-# - name: mesh_specimen
-#   outputs:
-#     - meshed_specimen
-#   inputs:
-#     - specimen_definition
-#   methods:
-#     - name: finite_radius_fan
-#     - name: finite_radius_uniform
-#       inputs:        
-#         - crack_tip_radius_microns
-#         - fine_mesh_length
-#         - fine_mesh_element_length
-#         - fan_box_width   # aproximate width of fan mesh in multiples of crack_tip_radius
-#         - fan_box_num_side_elements
-#       implementations:
-#         - name: abaqus       
-
-# - name: generate_specimen_model
-#   outputs:
-#     - specimen_model
-#   inputs:
-#     - material_models
-#     - meshed_specimen
-#   methods:
-    
-
-#  workflow
-      # sections:
-      #   - type: solid
-      #     material: euro-a-91
-      #     element_set: specimen
-      #   - type: solid
-      #     material: rigid
-      #     element_set: ridge
