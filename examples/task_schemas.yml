@@ -1,58 +1,41 @@
-- name: generate_material_models
+- name: generate_Sample
   outputs:
-    - material_models
+    - Sample_input_data
   inputs:
-    - materials_list
+    - Sample_size
+    - Inhomogeneity_factor
+    - L_groove
+    - L_slope
+    - Material_angle
+    - Groove_angle
+    - Elastic_modulus
+    - Poisson_ratio
+    - Density
+    - Barlat
+    - Path_plastic_table
   methods:
     - name: default
       implementations:
        - name: abaqus
-  
 
-- name: generate_specimen_parts
+- name: generate_FE_features
+  outputs:
+    - FE_input_data
   inputs:
-    - dimension          # 2 | 3   
-    - mesh_definition
+    - mesh_size
+    - name: bulk_parameters
+      default: [0.06, 1.2]
     - elem_type
-  outputs:
-    - specimen_parts
+    - Strain_rate
+    - total_time
+    - Displacment_BC  # [U_left, U_right, U_top, U_bottom]
+    - name: Step_time   # [initial, min, max]
+      default: [0, 0, 0]
   methods:
-    - name: curved_dogbone
-      inputs:
-        - fraction           # "full" | "half" | "quarter"
-        - specimen_material
+    - name: default
       implementations:
-        - name: abaqus   
-    - name: compact_tension_fracture
-      inputs:
-        - size_type          # "ct-0.5t" | "ct-1t" | "ct-2t"
-        - fraction           # "full" | "half" | "quarter"    
-        - specimen_material
-      implementations:
-        - name: abaqus   
-    - name: senb_fracture
-      inputs:
-        - a_w_ratio          # "0.5" | "0.1" | "0.2"
-        - fraction           # "full" | "half" | "quarter"
-        - specimen_material
-      implementations:
-        - name: abaqus          
-
-- name: generate_steps
-  inputs:
-    - time_increment_definition
-  outputs:
-    - steps
-  methods:
-    - name: compact_tension_steps
-      inputs:
-        - name: number_contours
-          default: 40
-        - applied_displacement
-      implementations:
-        - name: abaqus
-      
-
+       - name: abaqus
+       
 - name: simulate_deformation
   methods: 
     - name: FE
@@ -61,20 +44,24 @@
       implementations:
         - name: Abaqus
           inputs:
-            - material_models
-            - specimen_parts
-            - steps
+            - FE_input_data
+            - Sample_input_data
             - memory
+            - Extraction_file_path[file=True]
             - name: do_datacheck
               default: null
           input_map:
             - inputs:
-                - material_models
-                - specimen_parts
-                - steps
+                - FE_input_data
+                - Sample_input_data
               file: inputs.inp
+          output_map:
+            - files:
+                - name: Results_num.dat
+                  save: true
+              output: model_response
           command_pathways:
-            - commands_idx: [0]
+            - commands_idx: [0, 2]
             - commands_idx: [1]
               condition: [do_datacheck]
           commands:
@@ -95,5 +82,973 @@
                 - [scratch=$HOME/scratch]
                 - [memory]
                 - [interactive]
-          
+            - command: <<executable>> python
+              options: 
+                - [Extraction_file_path]
+                - [interactive]
+                                      
+- name: get_model_texture
+  outputs:
+    - ODF
+  inputs:
+    - crystal_symmetry
+    - specimen_symmetry
+  methods:
+    - name: unimodal
+      inputs: 
+        - modal_orientation_hkl
+        - modal_orientation_uvw
+        - halfwidth
+      implementations:
+        - name: mtex
+          commands:
+            - command: <<executable>>
+              options:
+                - [crystal_symmetry]
+                - [specimen_symmetry]
+                - [modal_orientation_hkl]
+                - [modal_orientation_uvw]
+                - [halfwidth]
+          output_map:
+            - files: 
+                - name: ODF.txt
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null
+              output: ODF
+    - name: fibre
+      inputs:
+        - halfwidth
+      implementations:
+        - name: mtex
+          commands:
+            - command: <<executable>>
+              options:
+                - [crystal_symmetry]
+                - [specimen_symmetry]
+                - [halfwidth]
+          output_map:
+            - files: 
+                - name: ODF.txt
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null
+              output: ODF
+    - name: random
+      inputs:
+        - num_orientations
+      implementations:
+        - name: mtex
+          commands:
+            - command: <<executable>>
+              options:
+                - [crystal_symmetry]
+                - [specimen_symmetry]
+                - [num_orientations]
+          output_map:
+            - files: 
+                - name: ODF.txt
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null
+              output: ODF                
 
+- name: estimate_ODF
+  outputs:
+    - ODF
+  inputs:
+    - specimen_symmetry
+    - phase
+  methods:
+    - name: from_CTF_file
+      inputs: 
+        - CTF_file_path[file=True]
+      implementations:
+        - name: mtex
+          commands:
+            - command: <<executable>>
+              options:
+                - [CTF_file_path]
+                - [specimen_symmetry]                
+                - [phase]
+          output_map:
+            - files:
+                - name: ODF.txt
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null
+              output: ODF
+    - name: from_CRC_file
+      inputs: 
+        - CRC_file_path[file=True]
+        - CPR_file_path[file=True]
+      implementations:
+        - name: mtex
+          commands:
+            - command: <<executable>>
+              options:
+                - [CRC_file_path]
+                - [specimen_symmetry]                
+                - [phase]
+          output_map:
+            - files:
+                - name: ODF.txt
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null                    
+              output: ODF
+
+- name: sample_texture
+  inputs:
+    - num_orientations
+  outputs:
+    - orientations
+  methods:
+    - name: from_ODF
+      inputs:
+        - ODF
+      implementations:
+        - name: mtex
+          inputs:
+            - crystal_symmetry
+            - specimen_symmetry        
+          input_map:
+            - inputs:
+                - ODF
+              file: ODF.txt
+            - inputs:
+                - ODF
+              file: orientation_coordinate_system.json
+          commands:
+            - command: <<executable>>
+              options:
+                - [crystal_symmetry]
+                - [specimen_symmetry]
+                - [num_orientations]
+          output_map:
+            - files:
+                - name: orientations.txt
+                  save: true
+                - name: orientation_coordinate_system.json
+                  save: true
+              output: orientations
+
+- name: generate_microstructure_seeds
+  outputs:
+    - microstructure_seeds
+  methods:
+    - name: random
+      inputs:
+        - grid_size
+        - num_grains
+      implementations:
+        - name: damask
+          outputs:
+            - microstructure_seeds
+          command_files:
+            positions: positions_<<inc>>.txt
+          commands:
+            - command: seeds_fromRandom
+              stdout: <<positions>>
+              stderr: stderr.log
+              options: 
+                - [-N, num_grains]
+                - [-g, grid_size]       
+          output_map:
+            - files: 
+                - name: <<positions>>
+                  save: true
+              options:
+                - name: orientation_coordinate_system
+                  default: null
+                - name: phase_label
+              output: microstructure_seeds
+
+- name: load_microstructure
+  outputs:
+    - microstructure_image
+  methods:
+    - name: EBSD+DIC
+      inputs:
+        - DIC
+        - EBSD
+        - transform_type
+        - root_path
+        - name: scaling_factor
+          default: 1
+      implementations:
+        - name: DefDAP
+          input_map:
+            - inputs:
+              - DIC
+              - EBSD
+              - transform_type
+              - root_path
+              - scaling_factor
+              file: inputs.hdf5
+              save: false
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: microstructure_image  
+
+- name: generate_volume_element
+  outputs:
+    - volume_element
+  methods:
+    - name: extrusion
+      inputs:
+        - microstructure_image
+        - depth
+        - image_axes
+        - phase_label
+        - homog_label
+      implementations:
+        - name: damask
+          inputs:
+            - microstructure_image
+            - depth
+            - image_axes
+    - name: random_voronoi
+      notes: >
+        In this method we use the random orientations that already exist in
+        microstructure_seeds.
+      implementations:
+        - name: neper
+          inputs:
+            - name: num_grains
+            - name: grid_size
+            - name: buffer_phase_size
+              default: null
+          commands:
+            - command: <<executable>> -T
+              options:
+                - [-n, num_grains]
+                - [-format, tesr]
+                - [-tesrformat, ascii]
+                - [-tesrsize, grid_size]
+                - [-o, volume_element.tesr]
+                - [-oridescriptor, 'euler-bunge:passive']
+                - [-periodicity, all]
+            - command: <<executable>> -T
+              options:
+                - [-n, num_grains]
+                - [-format, tesr]
+                - [-tesrformat, ascii]
+                - [-tesrsize, grid_size]
+                - [-o, volume_element.tesr]
+                - [-oridescriptor, 'euler-bunge:passive']
+                - [-periodicity, all]
+                - [-transform, buffer_phase_size]                
+          command_pathways:
+            - commands_idx: [0]
+            - commands_idx: [1]
+              condition: [buffer_phase_size]
+          output_map:
+            - output: volume_element
+              files:
+                - name: volume_element.tesr
+                  save: true
+              options:
+                - homog_label
+                - phase_label
+                - buffer_phase_label
+        - name: damask
+          inputs:
+            - name: microstructure_seeds
+            - name: size
+            - name: homog_label          
+            - name: rescale_size
+              default: null
+            - name: rescale_grid
+              default: null
+            - name: canvas_grid
+              default: null
+          input_map:
+            - inputs:
+                - microstructure_seeds
+              file: orientation.seeds
+            - inputs:
+                - microstructure_seeds
+              file: orientation_coordinate_system.json
+            - inputs:
+                - microstructure_seeds
+              file: phase_label.txt
+            - inputs:
+                - homog_label
+              file: homog_label.txt              
+          output_map:
+            - files:
+                - name: <<geom_file>>
+                  save: true
+                - name: orientation_coordinate_system.json
+                  save: true
+                - name: phase_label.txt
+                  save: true
+                - name: homog_label.txt
+                  save: true
+              options:
+                - name: model_coordinate_system
+                  default: null
+                - name: buffer_phase_label
+                  default: null
+              output: volume_element
+          command_files:
+            geom_file: volume_element_<<inc>>.geom
+          command_pathways:
+            - commands_idx: [0]
+            - condition: [rescale_grid, rescale_size]
+              commands_idx: [0, 1]
+            - condition: [rescale_grid, rescale_size, canvas_grid]
+              commands_idx: [0, 1, 2]
+            - condition: [canvas_grid]
+              commands_idx: [0, 2]
+          commands:
+            - command: geom_fromVoronoiTessellation
+              stdin: orientation.seeds
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-s, size]
+            - command: geom_rescale
+              stdin: <<geom_file>>
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-g, rescale_grid]
+                - [-s, rescale_size]
+            - command: geom_canvas
+              stdin: <<geom_file>>
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-g, canvas_grid]
+    - name: random_voronoi_from_orientations
+      notes: >
+        In this method we replace the orientations in microstructure_seeds
+        with orientations computed from a previous task.        
+      implementations:
+        - name: damask
+          inputs:
+            - name: microstructure_seeds
+            - name: orientations
+            - name: size
+            - name: homog_label
+            - name: rescale_size
+              default: null
+            - name: rescale_grid
+              default: null
+            - name: canvas_grid
+              default: null
+          input_map:
+            - inputs:
+                - microstructure_seeds
+                - orientations
+              file: orientation.seeds
+            - inputs:
+                - orientations
+              file: orientation_coordinate_system.json
+            - inputs:
+                - microstructure_seeds
+              file: phase_label.txt
+            - inputs:
+                - homog_label
+              file: homog_label.txt                 
+          output_map:
+            - files:
+                - name: <<geom_file>>
+                  save: true
+                - name: orientation_coordinate_system.json
+                  save: true
+                - name: phase_label.txt
+                  save: true
+                - name: homog_label.txt
+                  save: true                  
+              options:
+                - name: model_coordinate_system
+                  default: null
+                - name: buffer_phase_label
+                  default: null
+              output: volume_element
+          command_files:
+            geom_file: volume_element_<<inc>>.geom
+          command_pathways:
+            - commands_idx: [0]
+            - condition: [rescale_grid, rescale_size]
+              commands_idx: [0, 1]
+            - condition: [rescale_grid, rescale_size, canvas_grid]
+              commands_idx: [0, 1, 2]
+          commands:
+            - command: geom_fromVoronoiTessellation
+              stdin: orientation.seeds
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-s, size]
+            - command: geom_rescale
+              stdin: <<geom_file>>
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-g, rescale_grid]
+                - [-s, rescale_size]
+            - command: geom_canvas
+              stdin: <<geom_file>>
+              stdout: <<geom_file>>
+              stderr: stderr.log
+              options:
+                - [-g, canvas_grid]
+    - name: random_voronoi_2
+      notes: >
+        In this method we use the random orientations that already exist in
+        microstructure_seeds (using DAMASK Python package functions).  
+      inputs: 
+        - name: microstructure_seeds
+        - name: size
+        - name: homog_label                
+        - name: scale_morphology
+          default: null
+        - name: buffer_phase_size
+          default: null
+        - name: buffer_phase_label
+          default: null        
+      implementations:
+        - name: damask
+    - name: random_voronoi_from_orientations_2
+      notes: >
+        In this method we replace the orientations in microstructure_seeds
+        with orientations computed from a previous task (using DAMASK Python package
+        functions).
+      inputs: 
+        - name: microstructure_seeds
+        - name: size
+        - name: homog_label                
+        - name: scale_morphology
+          default: null
+        - name: buffer_phase_size
+          default: null
+        - name: buffer_phase_label
+          default: null
+        - name: orientations
+      implementations:
+        - name: damask
+
+- name: visualise_volume_element
+  inputs:
+    - volume_element
+  methods:
+    - name: VTK
+      outputs:
+        - __file__VTR_file
+      implementations:
+        - name: damask
+          input_map: 
+            - inputs:
+                - volume_element
+              file: geom.geom
+              save: true 
+
+- name: visualise_volume_element_response
+  inputs:
+    - volume_element_response
+  methods:
+    - name: VTK
+      outputs:
+        - __file__VTR_file
+      implementations:
+        - name: damask
+          input_map: 
+            - inputs:
+                - volume_element_response
+              file: geom.geom
+          commands:
+            - command: geom_check
+              parameters: [geom.geom]
+              stderr: stderr.log
+
+- name: generate_load_case
+  inputs:
+    - total_times
+    - num_increments
+    - name: target_strains
+      default: null
+    - name: dump_frequency
+      default: null
+  methods:
+    - name: uniaxial      
+      implementations:
+        - name: formable
+          inputs:
+            - directions # x, y or z
+            - name: target_strain_rates
+              default: null
+            - name: rotations    
+              default: null
+          input_map:
+            - inputs:
+                - total_times
+                - num_increments
+                - target_strains
+                - target_strain_rates
+                - dump_frequency
+                - directions
+                - rotations
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: load_case
+    - name: biaxial
+      implementations:
+        - name: formable
+          inputs:
+            - name: target_strain_rates
+              default: null
+            - directions # xy, xz or yz
+          input_map:
+            - inputs:
+                - total_times
+                - num_increments
+                - target_strains
+                - target_strain_rates
+                - dump_frequency
+                - directions
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: load_case
+    - name: plane_strain
+      implementations:
+        - name: formable
+          inputs:
+            - name: target_strain_rates
+              default: null              
+            - directions # xy, xz or yz
+          input_map:
+            - inputs:
+                - total_times
+                - num_increments
+                - target_strains
+                - target_strain_rates
+                - dump_frequency
+                - directions
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: load_case
+    - name: random_2D
+      implementations:      
+        - name: formable
+          inputs:
+            - name: target_strain_rates
+              default: null                  
+            - normal_directions # x, y, or z (i.e. load in yz, xz or xy planes)                                 
+          input_map:
+            - inputs:
+                - total_times
+                - num_increments
+                - target_strains
+                - target_strain_rates
+                - dump_frequency
+                - normal_directions
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: load_case
+    - name: random_3D
+      implementations:
+        - name: formable
+          inputs:
+            - name: rotation
+              default: false
+            - name: rotation_max_angle
+              default: null
+            - name: rotation_load_case
+              default: true
+            - name: non_random_rotation      
+              default: null
+          input_map:
+            - inputs:
+                - total_times
+                - num_increments
+                - target_strains
+                - dump_frequency
+                - rotation
+                - rotation_max_angle
+                - rotation_load_case
+                - non_random_rotation
+              file: inputs.hdf5
+              save: false
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: load_case
+  outputs:
+    - load_case
+
+- name: simulate_volume_element_loading
+  inputs: 
+    - name: volume_element
+    - name: load_case
+    - name: homogenization_schemes
+    - name: texture_alignment_method
+      default: axes_keyword
+    - name: single_crystal_parameters
+      default: null
+    - name: phases
+    - name: numerics
+      default: null
+    - name: single_crystal_parameter_perturbation
+      default: null
+  outputs:
+    - volume_element_response      
+  methods:
+    - name: CP_FFT
+      implementations:
+        - name: damask
+          input_map:
+            - inputs:
+                - homogenization_schemes
+                - volume_element
+                - single_crystal_parameters
+                - single_crystal_parameter_perturbation
+                - phases
+                - texture_alignment_method
+              file: material.yaml
+              save: true
+            - inputs:
+                - numerics
+              file: numerics.yaml
+              save: true
+            - inputs:
+                - volume_element
+              file: geom.geom
+              save: true
+            - inputs:
+                - load_case
+              file: load.load
+              save: true
+          commands:
+            - command: <<executable>>
+              parallel_mode: MPI
+              options:
+                - [--load, load.load]
+                - [--geom, geom.geom]
+              stdout: stdout.log
+              stderr: stderr.log
+          output_map:
+            - files: 
+                - name: geom_load.hdf5
+                  save: false
+              output: volume_element_response
+              options:
+                - name: operations
+                  default: null
+                - name: incremental_data
+          archive_excludes: ['geom_load.hdf5', '*.spectralOut']
+
+- name: fit_yield_function
+  outputs:
+    - fitted_yield_functions
+  methods:
+    - name: least_squares
+      implementations:
+        - name: formable
+          inputs:
+            - yield_function_name
+            - yield_point_criteria
+            - volume_element_response[context=uniaxial,alias=uniaxial_response]
+            - volume_element_response[context=multiaxial,alias=multiaxial_responses,group=multiaxial_responses]
+            - name: fixed_parameters
+              default: null
+          input_map:
+            - inputs:
+                - yield_function_name
+                - yield_point_criteria
+                - uniaxial_response
+                - multiaxial_responses
+                - fixed_parameters
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: fitted_yield_functions
+
+- name: get_tensile_test
+  outputs:
+    - tensile_test
+  methods:
+    - name: from_CSV
+      implementations:
+        - name: formable
+          inputs: 
+            - name: CSV_file_path
+              file: true
+            - name: CSV_arguments
+            - name: eng_stress_col_index
+              default: null 
+            - name: eng_strain_col_index
+              default: null
+            - name: true_stress_col_index
+              default: null
+            - name: true_strain_col_index        
+              default: null
+            - name: stress_units
+              default: Pa
+          input_map:
+            - inputs:
+                - CSV_file_path
+                - CSV_arguments
+                - eng_stress_col_index
+                - eng_strain_col_index
+                - true_stress_col_index
+                - true_strain_col_index
+                - stress_units
+              file: inputs.hdf5
+              save: false              
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: tensile_test 
+
+- name: optimise_single_crystal_parameters
+  inputs:  
+    - name: volume_element_response
+      group: single_crystal_parameter_optimisation
+      alias: perturbed_volume_element_responses
+      include_all_iterations: true    
+    - name: single_crystal_parameters
+      group: single_crystal_parameter_optimisation
+      include_all_iterations: true    
+    - name: single_crystal_parameter_perturbation
+      group: single_crystal_parameter_optimisation
+      alias: single_crystal_parameter_perturbations
+      include_all_iterations: true    
+    - name: tensile_test
+      alias: experimental_tensile_test    
+    - name: initial_damping  
+  outputs:
+    - single_crystal_parameters
+    - levenberg_marquardt_fitter
+  methods:
+    - name: levenberg_marquardt
+      implementations:
+        - name: formable
+          input_map:
+            - inputs:
+                - single_crystal_parameters
+                - single_crystal_parameter_perturbations          
+                - perturbed_volume_element_responses
+                - experimental_tensile_test
+                - initial_damping
+              file: inputs.hdf5
+              save: false             
+          commands:
+            - command: <<executable>> inputs.hdf5
+          output_map:
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: single_crystal_parameters
+            - files:
+                - name: outputs.hdf5
+                  save: false
+              output: levenberg_marquardt_fitter
+
+- name: dummy_task_1
+  outputs:
+    - parameter_2
+  methods:
+    - name: method_1
+      inputs:
+        - parameter_1
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+                - parameter_1
+              file: t1_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_2
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t1_m1_infile_1]
+                - [--infile2, t1_m1_infile_1]
+                - [--value, parameter_1]
+
+- name: dummy_task_2
+  outputs:
+    - parameter_4
+  methods:
+    - name: method_1
+      inputs:
+        - parameter_2
+        - parameter_3
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+                - parameter_2
+                - parameter_3
+              file: t2_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_4                
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t2_m1_infile_1]
+                - [--infile2, t2_m1_infile_1]
+                - [--value, parameter_2]
+
+- name: dummy_task_3
+  outputs:
+    - parameter_6
+  methods:
+    - name: method_1
+      inputs:
+        - parameter_5
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+                - parameter_5
+              file: t3_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_6                
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t3_m1_infile_1]
+                - [--infile2, t3_m1_infile_1]
+                - [--value, parameter_5]
+
+- name: dummy_task_4
+  outputs:
+    - parameter_8
+  methods:
+    - name: method_1
+      inputs:
+        - parameter_2[group=group_A]
+        - parameter_6
+        - parameter_7
+        - parameter_9
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+              - parameter_2
+              - parameter_6
+              - parameter_7
+              - parameter_9
+              file: t4_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_8                
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t4_m1_infile_1]
+                - [--infile2, t4_m1_infile_1]
+
+- name: dummy_task_5
+  inputs:
+    - parameter_8[alias=parameter_8_group]
+    - parameter_10
+  outputs:
+    - parameter_11
+  methods:
+    - name: method_1
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+              - parameter_8_group
+              - parameter_10
+              file: t5_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_11
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t5_m1_infile_1]
+                - [--infile2, t5_m1_infile_1]
+
+- name: dummy_task_6b
+  inputs:
+    - parameter_4[context=uniaxial,alias=parameter_4_uniaxial]
+    - parameter_4[context=multiaxial,group=multiaxial,alias=parameter_4_multiaxial]
+    - parameter_5
+  outputs:
+    - parameter_8
+  methods:
+    - name: method_1
+      implementations:
+        - name: dummy_software
+          input_map:
+            - inputs:
+              - parameter_4_multiaxial
+              - parameter_4_uniaxial
+              - parameter_5
+              file: t6b_m1_infile_1
+          output_map:
+            - files:
+                - name: outfile.txt
+                  save: true
+              output: parameter_8
+          commands:
+            - command: <<executable>> dummy doSomething
+              options:
+                - [--infile1, t6b_m1_infile_1]
+                - [--infile2, t6b_m1_infile_1]
