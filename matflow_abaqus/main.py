@@ -48,9 +48,9 @@ def generate_steps(applied_displacement, number_contours, time_increment_definit
     }
     return out
 
-@input_mapper(input_file='inputs.inp', task='simulate_deformation', method='FE')
-def write_inputs_file(path, material_models, specimen_parts, steps):
-    write_inp(path, material_models, specimen_parts, steps)
+# @input_mapper(input_file='inputs.inp', task='simulate_deformation', method='FE')
+# def write_inputs_file(path, material_models, specimen_parts, steps):
+#     write_inp(path, material_models, specimen_parts, steps)
 
 @cli_format_mapper(input_name="memory", task="simulate_deformation", method="FE")
 def memory_formatter(memory):
