@@ -1,42 +1,34 @@
-- name: generate_Sample
-  outputs:
-    - Sample_input_data
-  inputs:
-    - Sample_size
-    - Inhomogeneity_factor
-    - L_groove
-    - L_slope
-    - Material_angle
-    - Groove_angle
-    - Elastic_modulus
-    - Poisson_ratio
-    - Density
-    - Barlat
-    - Path_plastic_table
-  methods:
-    - name: default
-      implementations:
-       - name: abaqus
-
-- name: generate_FE_features
+- name: generate_MK_model
   outputs:
     - FE_input_data
   inputs:
+    - sample_size
+    - inhomogeneity_factor
+    - L_groove
+    - L_slope
+    - material_angle
+    - groove_angle
+    - elastic_modulus
+    - poisson_ratio
+    - density
+    - law
+    - path_plastic_table
     - mesh_size
     - name: bulk_parameters
       default: [0.06, 1.2]
     - elem_type
-    - Strain_rate
+    - strain_rate
     - total_time
-    - Displacment_BC  # [U_left, U_right, U_top, U_bottom]
-    - name: Step_time   # [initial, min, max]
+    - displacment_BC  # [U_left, U_right, U_top, U_bottom]
+    - name: time_step   # [initial, min, max]
       default: [0, 0, 0]
   methods:
     - name: default
       implementations:
        - name: abaqus
+
        
-- name: simulate_deformation
+- name: simulate_MK_deformation
   methods: 
     - name: FE
       outputs:
@@ -45,19 +37,17 @@
         - name: Abaqus
           inputs:
             - FE_input_data
-            - Sample_input_data
             - memory
-            - Extraction_file_path[file=True]
+            - extraction_file_path[file=True]
             - name: do_datacheck
               default: null
           input_map:
             - inputs:
                 - FE_input_data
-                - Sample_input_data
               file: inputs.inp
           output_map:
             - files:
-                - name: Results_num.dat
+                - name: results_num.dat
                   save: true
               output: model_response
           command_pathways:
@@ -84,9 +74,19 @@
                 - [interactive]
             - command: <<executable>> python
               options: 
-                - [Extraction_file_path]
+                - [extraction_file_path]
                 - [interactive]
-                                      
+                                 
+- name: find_forming_limit_curve
+  outputs:
+    - forming_limit_curve
+  inputs:
+    - model_response[alias=all_model_responses,group=all_model_responses]
+  methods:
+    - name: default
+      implementations:
+       - name: abaqus
+       
 - name: get_model_texture
   outputs:
     - ODF
