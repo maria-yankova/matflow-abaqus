@@ -3,42 +3,51 @@ run_options:
   l: short
 tasks:
 
-  - name: generate_Sample
+  - name: generate_MK_model
     method: default
     software: abaqus
     base:
-        Sample_size: [20, 20, 1]
-        Inhomogeneity_factor: 0.99
+        sample_size: [20, 20, 1]
+        inhomogeneity_factor: 0.99
         L_groove: 0.5
         L_slope: 0.25
-        Material_angle: 0
-        Groove_angle: 90
-        Elastic_modulus: 70000.0
-        Poisson_ratio: 0.33
-        Density: 2.7e-9
-        Barlat: [[5],[ 0.7087, 0.9074, 1.1376, 1.1526, 1.4851, 1.1637, 0.3039, 0.6731],
-        [ 0.578, 0.9646, 1.0186, 1.4269, 1.1968, 0.5941, 0.6772, 0.6567],
-        [ 0.2497, 0.41125]] 
-        Path_plastic_table: '/mnt/iusers01/jf01/m79320tj/scratch/5_Test_Mat_Abq/Material_properties.txt'
-        
-  - name: generate_FE_features
-    method: default
-    software: abaqus
-    base:
+        material_angle: 0
+        groove_angle: 0
+        elastic_modulus: 70000.0
+        poisson_ratio: 0.33
+        density: 2.7e-9
+        law: [['Barlat'],[5],[ 0.7087, 0.9074, 1.1376, 1.1526, 1.4851, 1.1637, 0.3039, 0.6731, 0.578, 0.9646, 1.0186, 1.4269, 1.1968, 0.5941, 0.6772, 0.6567,  0.2497, 0.41125]] 
         mesh_size: 1.0
-        elem_type: C3D8
-        Strain_rate: 25
+        elem_type: C3D8R
+        strain_rate: 25
         total_time: 0.05
     sequences:
-        - name: Displacment_BC
-          vals: [[-0.5, 0.5, 0.5, -0.5], [-0.5, 0.5, 0.0, 0.0], [-0.5, 0.5, 0.25, -0.25], [-0.5, 0.5, 'free', 'free']]
-      
-  - name: simulate_deformation
+        - name: displacment_BC
+          vals: [[-0.5, 0.5, 0.5, -0.5], [-1., 1., 0.0, 0.0], [-0.5, 0.5, 0.25, -0.25], [-1.5, 1.5, 'free', 'free']]
+          nest_idx: 1
+        - name: path_plastic_table
+          vals: ['/mnt/iusers01/jf01/m79320tj/scratch/9_V6_Nest_group/Material_properties.txt',
+          '/mnt/iusers01/jf01/m79320tj/scratch/9_V6_Nest_group/Material_properties.txt',
+          '/mnt/iusers01/jf01/m79320tj/scratch/9_V6_Nest_group/Material_properties.txt',
+          '/mnt/iusers01/jf01/m79320tj/scratch/9_V6_Nest_group/Material_properties.txt']
+          nest_idx: 1
+    groups:
+      all_model_responses:
+        group_by: []
+        nest: True  
+                
+                
+  - name: simulate_MK_deformation
     method: FE
     software: abaqus
     run_options:
       num_cores: 1
     base:
-      memory: 4 GB
-      Extraction_file_path: '/mnt/iusers01/jf01/m79320tj/scratch/5_Test_Mat_Abq/Extraction.py'
+      memory: 2 GB
+      extraction_file_path: '/mnt/iusers01/jf01/m79320tj/scratch/8_V5_Element_group/Extraction.py'
       # do_datacheck true
+
+      
+  - name: find_forming_limit_curve
+    method: default
+    software: abaqus
