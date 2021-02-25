@@ -20,7 +20,8 @@ tasks:
         mesh_size: 1.0
         elem_type: C3D8R
         strain_rate: 25
-        total_time: 0.05
+        total_time: 0.018
+        time_step: [0,0,0.0005]
     sequences:
         - name: displacment_BC
           vals: [[-0.5, 0.5, 0.5, -0.5], [-1., 1., 0.0, 0.0], [-0.5, 0.5, 0.25, -0.25], [-1.5, 1.5, 'free', 'free']]
