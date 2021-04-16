@@ -76,9 +76,14 @@ def generate_model_response(path):
     model_response = save_model_response(path)
     return model_response
     
-@func_mapper(task='find_forming_limit_curve', method='default')
-def forming_limit_curve(all_model_responses):
-    flc = compute_forming_limit_curve(all_model_responses)
+@func_mapper(task='find_forming_limit_curve', method='strain_rate_ratio')
+def forming_limit_curve(all_model_responses, strain_rate_ratio_threshold,
+                        num_groove_angles):
+    flc = compute_forming_limit_curve(
+        all_model_responses,
+        strain_rate_ratio_threshold,
+        num_groove_angles
+    )
     out = {
         'forming_limit_curve': flc
     }
