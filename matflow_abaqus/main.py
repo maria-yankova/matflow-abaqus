@@ -58,8 +58,8 @@ def memory_formatter(memory):
 
 	
 @func_mapper(task='generate_MK_model', method='default')
-def generate_sample(sample_size, inhomogeneity_factor, L_groove, L_slope, material_angle, groove_angle, elastic_modulus, poisson_ratio, density, law, path_plastic_table, mesh_size, bulk_parameters, elem_type, strain_rate, total_time, displacment_BC, time_step):
-    Model_input = generate_FE_input(sample_size, inhomogeneity_factor, L_groove, L_slope, material_angle, groove_angle, elastic_modulus, poisson_ratio, density, law, path_plastic_table, mesh_size, bulk_parameters, elem_type, strain_rate, total_time, displacment_BC, time_step)
+def generate_sample(sample_size, inhomogeneity_factor, L_groove, L_slope, material_angle, groove_angle, elastic_modulus, poisson_ratio, density, law, path_plastic_table, mesh_size, bulk_parameters, elem_type, strain_rate, total_time, displacment_BC, time_step, nb_el_thickness, max_plastic_strain):
+    Model_input = generate_FE_input(sample_size, inhomogeneity_factor, L_groove, L_slope, material_angle, groove_angle, elastic_modulus, poisson_ratio, density, law, path_plastic_table, mesh_size, bulk_parameters, elem_type, strain_rate, total_time, displacment_BC, time_step, nb_el_thickness, max_plastic_strain)
     out = {
         'FE_input_data': Model_input
     }
@@ -75,7 +75,7 @@ def write_MK_inputs_file(path, FE_input_data):
 def generate_model_response(path):
     model_response = save_model_response(path)
     return model_response
-    
+
 @func_mapper(task='find_forming_limit_curve', method='strain_rate_ratio')
 def forming_limit_curve(all_model_responses, strain_rate_ratio_threshold,
                         num_groove_angles):
@@ -87,7 +87,7 @@ def forming_limit_curve(all_model_responses, strain_rate_ratio_threshold,
     out = {
         'forming_limit_curve': flc
     }
-    return out
+    return out    
 
 @cli_format_mapper(input_name="memory", task="simulate_MK_deformation", method="FE")
 def memory_formatter(memory):
