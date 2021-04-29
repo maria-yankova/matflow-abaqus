@@ -65,7 +65,8 @@ def generate_sample(sample_size, inhomogeneity_factor, L_groove, L_slope, materi
                     groove_angle, elastic_modulus, poisson_ratio, density, law,
                     path_plastic_table, mesh_size, bulk_parameters, elem_type,
                     strain_rate, total_time, displacment_BC, time_step,
-                    fitted_yield_functions, yield_point_criterion):
+                    fitted_yield_functions, yield_point_criterion, max_plastic_strain,
+                    Nb_el_thickness):
 
     plastic = np.loadtxt(path_plastic_table, comments='%', delimiter=',')
     if not law:
@@ -143,6 +144,8 @@ def generate_sample(sample_size, inhomogeneity_factor, L_groove, L_slope, materi
         'total_time': total_time,
         'displacment_BC': displacment_BC,
         'time_step': time_step,
+        'max_plastic_strain': max_plastic_strain,
+        'Nb_el_thickness': Nb_el_thickness,
     }
     out = {
         'FE_input_data': FE_input_data
