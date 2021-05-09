@@ -114,7 +114,11 @@ def generate_sample(sample_size, inhomogeneity_factor, L_groove, L_slope, materi
             'type': yield_func['name'],
             'parameters': {
                 i: yield_func[i]
-                for i in yield_func.keys() if i not in ['equivalent_stress', 'exponent']
+                for i in yield_func.keys() if i not in [
+                    'equivalent_stress',
+                    'exponent',
+                    'fit_info',
+                ]
             }
         }
         if 'exponent' in yield_func:
@@ -166,14 +170,15 @@ def generate_model_response(path):
 
 @func_mapper(task='find_forming_limit_curve', method='strain_rate_ratio')
 def forming_limit_curve(all_model_responses, strain_rate_ratio_threshold,
-                        num_groove_angles):
-    flc = compute_forming_limit_curve(
+                        all_displacement_BCs, all_groove_angles):
+    FLC = compute_forming_limit_curve(
         all_model_responses,
         strain_rate_ratio_threshold,
-        num_groove_angles
+        all_displacement_BCs,
+        all_groove_angles,
     )
     out = {
-        'forming_limit_curve': flc
+        'forming_limit_curve': FLC
     }
     return out
 
