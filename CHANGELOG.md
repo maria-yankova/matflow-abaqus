@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.1.2] - 2021.08.10
+
+### Added
+
+- Add support for the tasks: `generate_MK_model`, `simulate_MK_deformation/FE` and `find_forming_limit_curve`.
+
 ## [0.1.1] - 2020.12.15
 
 ### Added
